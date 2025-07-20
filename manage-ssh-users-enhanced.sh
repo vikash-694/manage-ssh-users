@@ -30,11 +30,18 @@ fi
 # ✅ SSH Key input
 read -rp "👉 Paste PUBLIC SSH key for '$USERNAME': " PUB_KEY
 
-# ✅ SSH Key basic validation
-if [[ ! "$PUB_KEY" =~ ^(ssh-rsa|ssh-ed25519|ecdsa)- ]]; then
-    echo "❌ Invalid SSH key format."
+# # ✅ SSH Key basic validation
+# if [[ ! "$PUB_KEY" =~ ^(ssh-rsa|ssh-ed25519|ecdsa)- ]]; then
+#     echo "❌ Invalid SSH key format."
+#     exit 1
+# fi
+
+# ✅ SSH Key basic validation (fixed)
+if [[ ! "$PUB_KEY" =~ ^(ssh-(rsa|ed25519|ecdsa)) ]]; then
+    echo "❌ Invalid or unsupported SSH key format."
     exit 1
 fi
+
 
 # ✅ Create user (if not exists)
 if ! id "$USERNAME" &>/dev/null; then
