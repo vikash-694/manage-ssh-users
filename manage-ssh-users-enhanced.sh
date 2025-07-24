@@ -30,18 +30,11 @@ fi
 # ✅ SSH Key input
 read -rp "👉 Paste PUBLIC SSH key for '$USERNAME': " PUB_KEY
 
-# # ✅ SSH Key basic validation
-# if [[ ! "$PUB_KEY" =~ ^(ssh-rsa|ssh-ed25519|ecdsa)- ]]; then
-#     echo "❌ Invalid SSH key format."
-#     exit 1
-# fi
-
-# ✅ SSH Key basic validation (fixed)
+# ✅ SSH Key basic validation
 if [[ ! "$PUB_KEY" =~ ^(ssh-(rsa|ed25519|ecdsa)) ]]; then
     echo "❌ Invalid or unsupported SSH key format."
     exit 1
 fi
-
 
 # ✅ Create user (if not exists)
 if ! id "$USERNAME" &>/dev/null; then
@@ -91,22 +84,34 @@ else
     log_action "SSH key configured for '$USERNAME'."
 fi
 
-# ✅ Add user to admin group
-usermod -aG "$ADMIN_GROUP" "$USERNAME"
-echo "✅ '$USERNAME' added to '$ADMIN_GROUP' group."
-log_action "'$USERNAME' added to '$ADMIN_GROUP'."
+# ✅ Confirm before admin group access
+read -rp "⚠️ Do you want to add '$USERNAME' to the '$ADMIN_GROUP' group? [y/N]: " GRANT_ADMIN
+if [[ "$GRANT_ADMIN" =~ ^[Yy]$ ]]; then
+    usermod -aG "$ADMIN_GROUP" "$USERNAME"
+    echo "✅ '$USERNAME' added to '$ADMIN_GROUP' group."
+    log_action "'$USERNAME' added to '$ADMIN_GROUP'."
+else
+    echo "🚫 Skipped adding '$USERNAME' to '$ADMIN_GROUP'."
+    log_action "Skipped adding '$USERNAME' to '$ADMIN_GROUP'."
+fi
 
-# ✅ Grant passwordless sudo (one-time setup)
+# ✅ Confirm before passwordless sudo
 SUDOERS_FILE="/etc/sudoers.d/99-${ADMIN_GROUP}-nopasswd"
 if [[ ! -f "$SUDOERS_FILE" ]]; then
-    echo "%$ADMIN_GROUP ALL=(ALL) NOPASSWD: ALL" > "$SUDOERS_FILE"
-    chmod 440 "$SUDOERS_FILE"
-    visudo -cf "$SUDOERS_FILE" || {
-        echo "❌ Syntax error in $SUDOERS_FILE. Aborting."
-        exit 1
-    }
-    echo "✅ Passwordless sudo granted to '$ADMIN_GROUP' group."
-    log_action "Passwordless sudo granted to '$ADMIN_GROUP'."
+    read -rp "⚠️ Do you want to grant passwordless sudo to '$ADMIN_GROUP'? [y/N]: " GRANT_SUDO
+    if [[ "$GRANT_SUDO" =~ ^[Yy]$ ]]; then
+        echo "%$ADMIN_GROUP ALL=(ALL) NOPASSWD: ALL" > "$SUDOERS_FILE"
+        chmod 440 "$SUDOERS_FILE"
+        visudo -cf "$SUDOERS_FILE" || {
+            echo "❌ Syntax error in $SUDOERS_FILE. Aborting."
+            exit 1
+        }
+        echo "✅ Passwordless sudo granted to '$ADMIN_GROUP' group."
+        log_action "Passwordless sudo granted to '$ADMIN_GROUP'."
+    else
+        echo "🚫 Skipped granting passwordless sudo."
+        log_action "Skipped passwordless sudo setup."
+    fi
 else
     echo "ℹ️ Passwordless sudo already configured for '$ADMIN_GROUP'."
 fi
